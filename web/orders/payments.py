@@ -29,6 +29,8 @@ def validate_payment(order, scenario):
             if not hmac.compare_digest(expected, response.headers.get("X-Signature", "")):
                 raise PaymentUnavailable("invalid_response_signature")
         result = json.loads(body)
+        if not isinstance(result, dict) or not isinstance(result.get("payment_id"), str):
+            raise PaymentUnavailable("invalid_provider_response")
         if result.get("key") != str(order.pk) or type(result.get("amount_cents")) is not int or result["amount_cents"] != order.total_cents:
             raise PaymentUnavailable("response_identity_mismatch")
         if result.get("decision") not in ("approved", "declined"):

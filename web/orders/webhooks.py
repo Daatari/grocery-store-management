@@ -22,7 +22,9 @@ def stripe_event(request):
         return HttpResponse(status=400)
     if event.get("type") in {"checkout.session.completed", "checkout.session.expired",
                             "checkout.session.async_payment_succeeded", "checkout.session.async_payment_failed"}:
-        session = event["data"]["object"]
+        session = event.get("data", {}).get("object", {})
+        if not isinstance(session, dict) or not isinstance(session.get("id"), str):
+            return HttpResponse(status=400)
         # Notifications are hints. The worker retrieves authoritative state from Stripe.
         # Repeated or out-of-order hints cannot finalize a payment twice.
         PaymentJob.objects.filter(provider="stripe", provider_session=session.get("id"), state="queued").update(

@@ -49,14 +49,40 @@ def main():
             authenticated_nodes.add(response.headers["x-server-node"])
             assert "East Market" in response.text()
         assert authenticated_nodes == {"web-a", "web-b"}
+        guest = browser.new_page()
+        for scenario, heading in [("decline", "Payment declined."), ("timeout", "Order confirmed.")]:
+            guest.goto(BASE + "/stores/east-market/")
+            item = guest.locator("article").filter(has=guest.get_by_role("heading", name="Bananas", exact=True))
+            item.get_by_role("button", name="Add to cart").click()
+            guest.get_by_label("Payment simulation").select_option(scenario)
+            guest.get_by_role("button", name="Place demo order").click()
+            expect(guest.get_by_role("heading", name=heading)).to_be_visible(timeout=30000)
+            # The signed-in customer's session cannot inspect this guest's order.
+            assert page.request.get(guest.url).status == 404
+        guest.screenshot(path=str(screenshots / "guest-order.png"), full_page=True)
+        guest.close()
         page.get_by_role("button", name="Sign out").click()
         sign_in("manager-east", values["GROCERY_DEMO_PASSWORD"])
         page.goto(BASE + "/manage/east-market/")
         expect(page.get_by_role("heading", name="Inventory", exact=True)).to_be_visible()
         page.screenshot(path=str(screenshots / "management.png"), full_page=True)
+        page.goto(BASE + "/manage/east-market/import/")
+        expect(page.get_by_role("heading", name="Add a product", exact=True)).to_be_visible()
+        page.screenshot(path=str(screenshots / "catalog-import.png"), full_page=True)
         assert page.request.get(BASE + "/manage/harbour-market/").status == 403
         page.get_by_role("button", name="Sign out").click()
         sign_in("admin", values["GROCERY_ADMIN_PASSWORD"])
+        page.goto(BASE + "/warehouses/")
+        page.get_by_label("Stock", exact=True).select_option(label="Central warehouse: Apples")
+        page.get_by_label("Quantity", exact=True).fill("10")
+        page.get_by_role("button", name="Record movement").click()
+        expect(page.get_by_text("Central warehouse · Apples · 10", exact=True)).to_be_visible()
+        page.get_by_label("Stock", exact=True).select_option(label="Central warehouse: Apples")
+        page.get_by_label("Destination", exact=True).select_option(label="East Market: Apples")
+        page.get_by_label("Quantity", exact=True).fill("3")
+        page.get_by_role("button", name="Record movement").click()
+        expect(page.get_by_text("Central warehouse · Apples · 7", exact=True)).to_be_visible()
+        page.screenshot(path=str(screenshots / "warehouse.png"), full_page=True)
         for attempt in range(12):
             page.goto(BASE + "/operations/logs/")
             if page.locator("td", has_text="web-a").count() and page.locator("td", has_text="web-b").count():

@@ -47,6 +47,6 @@ def validate(job):
         if url and (urlparse(url).scheme != "https" or urlparse(url).hostname != "checkout.stripe.com"):
             raise PaymentUnavailable("stripe_url_invalid")
         return {"decision": "waiting", "payment_id": session.id, "url": url}
-    except stripe.StripeError:
+    except (stripe.StripeError, AttributeError, TypeError, ValueError):
         # Do not leak provider messages, customer data, or keys into application logs.
         raise PaymentUnavailable("stripe_unavailable") from None
