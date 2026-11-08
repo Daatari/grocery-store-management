@@ -1,7 +1,8 @@
 build/
+runtime/
+__pycache__/
+*.pyc
 .cache/
-grocery.csv
-cart.csv
 .env
 .env.*
 !.env.example
