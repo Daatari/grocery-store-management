@@ -74,6 +74,13 @@ def set_quantity(user, store, inventory_id, quantity, *, replace=False):
 @transaction.atomic
 def checkout(user, store, checkout_key, scenario="approve", provider="simulator", contact_name="", contact_email=""):
     user = customer_for(user)
+    # Serialize checkout keys across this customer's stores as well as within one cart.
+    user = type(user).objects.select_for_update().get(pk=user.pk)
+    if not isinstance(contact_name, str) or len(contact_name) > 100 or not isinstance(contact_email, str) or len(contact_email) > 254:
+        raise ValidationError("Invalid checkout contact details.")
+    if contact_email:
+        from django.core.validators import validate_email
+        validate_email(contact_email)
     if scenario not in ("approve", "decline", "timeout"):
         raise ValidationError("Unknown payment simulation.")
     cart = Cart.objects.select_for_update().filter(customer=user, store=store).first()

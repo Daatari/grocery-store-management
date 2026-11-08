@@ -17,6 +17,7 @@ def stripe_event(request):
             settings.STRIPE_WEBHOOK_SECRET, tolerance=300)
     except (ValueError, stripe.SignatureVerificationError):
         return HttpResponse(status=400)
+    event = event.to_dict()
     if event.get("livemode") is not False:
         return HttpResponse(status=400)
     if event.get("type") in {"checkout.session.completed", "checkout.session.expired",

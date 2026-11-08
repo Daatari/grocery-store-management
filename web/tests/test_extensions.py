@@ -135,7 +135,8 @@ class ExtensionTests(Fixture, TestCase):
 
     @override_settings(STRIPE_SECRET_KEY="sk_test_dummy")
     def test_stripe_adapter_uses_snapshot_and_rejects_wrong_amount(self):
-        from orders.stripe_gateway import validate
+        from orders.stripe_gateway import validate, client
+        self.assertIsNotNone(client())
         set_quantity(self.customer, self.east, self.item.pk, 1)
         order = checkout(self.customer, self.east, uuid.uuid4(), provider="stripe")
         api = MagicMock()

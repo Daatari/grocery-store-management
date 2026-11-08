@@ -11,7 +11,7 @@ def client():
     if not settings.STRIPE_SECRET_KEY.startswith("sk_test_"):
         raise PaymentUnavailable("stripe_not_configured")
     return stripe.StripeClient(settings.STRIPE_SECRET_KEY, max_network_retries=1,
-        http_client=stripe.HTTPClient.new_default_http_client(timeout=8))
+        http_client=stripe.RequestsClient(timeout=8))
 
 
 def validate(job):
@@ -22,7 +22,7 @@ def validate(job):
             session = api.v1.checkout.sessions.retrieve(job.provider_session)
         else:
             # Never recreate an uncertain session after Stripe's idempotency retention.
-            if timezone.now() > order.created_at + timedelta(minutes=29):
+            if timezone.now() > order.created_at + timedelta(minutes=89):
                 raise PaymentUnavailable("stripe_creation_window_closed")
             session = api.v1.checkout.sessions.create({
                 "mode": "payment", "payment_method_types": ["card"],
@@ -30,7 +30,7 @@ def validate(job):
                 "success_url": f"{settings.PUBLIC_BASE_URL}/orders/{order.pk}/",
                 "cancel_url": f"{settings.PUBLIC_BASE_URL}/orders/{order.pk}/",
                 # Fixed expiry and payload preserve the idempotency key across retries.
-                "expires_at": int((order.created_at + timedelta(minutes=31)).timestamp()),
+                "expires_at": int((order.created_at + timedelta(hours=2)).timestamp()),
                 "line_items": [{"price_data": {"currency": "cad", "unit_amount": line.unit_price_cents,
                     "product_data": {"name": line.product_name}}, "quantity": line.quantity}
                     for line in order.lines.order_by("pk")],

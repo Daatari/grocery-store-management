@@ -1,52 +1,52 @@
-# Running and troubleshooting
+# Running the lab
 
-## Start with sample data
+`python tools/deploy.py up` generates local credentials, builds the image, starts PostgreSQL, migrates the schema, initializes an empty catalog, and waits for health checks. Docker must use Linux containers. The first build downloads images and dependencies.
 
-Copy `data/store.sample.txt` to a new path, such as `runtime/store.txt`, and run the application with `--store runtime/store.txt`. A missing store starts empty; an invalid existing store causes startup to fail rather than silently discarding data.
+The stack contains Nginx, two identical web instances, PostgreSQL, a payment/expiry worker, the simulator, a collector, and a one-shot migration container. Sessions are stored in PostgreSQL. Only Nginx binds to localhost port 8080. Web/worker processes have outbound connectivity for Stripe and Open Food Facts. These are isolated processes/networks on one Docker host, not independent machines.
 
-The current snapshot format begins with `GROCERY 1`, contains product (`P`) and cart (`C`) records, and ends with `END`. Prices are integer cents. Product IDs must be unique, positive integers. Counts, prices, names, file size, and references are checked before the snapshot is accepted. Legacy CSV files are not migrated automatically; preserve them separately if you have data beyond the sample fixtures.
-
-## Commands
-
-```text
-list
-product 5 "Frozen Food" "Green peas" 299 20
-add 5 3
-remove 5 1
-cart
-cancel
-add 5 2
-checkout
-quit
-```
-
-`product` creates a product and assigns its department label; duplicate IDs are rejected. `cancel` empties the cart and returns its reservations to stock. `checkout` clears the cart and reports the subtotal before tax. There is no payment integration. EOF exits cleanly. Invalid commands are reported and the following command can still run.
-
-Exit codes: **0** for a clean session, **2** if any command failed, **1** for startup failure. The nonzero command result remains even if later commands succeed, so scripts can detect partial failure.
-
-## Search collected logs
+Application containers run as a non-root user with read-only root filesystems, temporary `/tmp`, and dedicated writable volumes.
 
 ```sh
-python tools/logs.py --db runtime/events.sqlite ingest runtime/logs/node-a-SESSION.jsonl runtime/logs/node-b-SESSION.jsonl
-python tools/logs.py --db runtime/events.sqlite query --level WARN --operation cart.add
-python tools/logs.py --db runtime/events.sqlite query --node node-a --since 2026-11-08T00:00:00Z --limit 20
+python tools/deploy.py status
+python tools/deploy.py logs
+python tools/deploy.py credentials
+python tools/deploy.py down
 ```
 
-Use actual filenames printed by the demo or found in the log directory. Importing the same files again does not duplicate records. The tool prints inserted, duplicate, and rejected counts. Exit **2** means some lines were rejected while valid events were imported; exit **1** means an I/O, argument, or database failure. Diagnostics include the file and line number without echoing raw payloads. Incomplete final lines can be retried after the producer finishes writing them.
+Stopping preserves volumes. Changing `.env` does not rotate existing database or user passwords. Back up the database and signing key together; old ledger signatures depend on that key. Backup/restore and key rotation are not automated here.
 
-## Common failures
+## Administrator workflows
 
-| Symptom | Action |
-| --- | --- |
-| `validation_failed` on `cart.add` | Check the requested quantity and available stock. No change was committed. |
-| `storage_or_internal_error` | Inspect stderr, destination directory permissions, and available disk space. The prior state is retained on a reported save failure. |
-| `Store is locked` | Check for a running process using that exact store. Only after confirming none exists, remove that store's empty `.lock` directory. Never remove a live process's lock. |
-| Invalid snapshot on startup | Keep a copy for investigation. Restore a known-good backup or copy the sample to a new path; do not overwrite the original blindly. |
-| Event identity conflict | Compare the source files. An event identity was reused with different content; the existing record was preserved. |
-| Log-write warning after a command | Inspect the log directory and disk space. Do not repeat the business command just because its log failed; the state may already be saved. |
+**System logs** filters events by node, severity, operation, UTC time, or request ID. Application events omit request bodies, query strings, credentials, contact details, and card data. Collection polls every five seconds; files rotate at 10 MiB with three backups per node. Indexed records older than seven days are deleted. Disk reclamation and offset-aware shipping remain future work. Logs are best effort; inventory audit records commit transactionally.
 
-Stop the application before copying a snapshot as a backup. The store is a local, single-writer prototype; do not share its directory over a network or use hard-linked aliases to bypass the lock. Logs and the SQLite index have no automatic retention policy and should be kept in the ignored `runtime/` directory.
+Payments requiring review appear below the log table. Retrying keeps the order and provider key. There is no "assume unpaid" action that could release stock after an unknown payment outcome.
 
-## Verification
+**Warehouse** receives stock or transfers it to a matching store product. Create new warehouse/product stock rows with zero quantity through Django admin, then use audited movements. Transfers represent completed movement, not goods in transit.
 
-`ctest` runs business-rule and storage tests, Python log-collector tests, and an end-to-end application test. Tests cover partial removal, insufficient stock, duplicate product IDs, save failure rollback, restart recovery, checkout, cancellation, malformed snapshots, writer exclusion, duplicate imports, conflicting log identities, invalid events, and filters. The application test runs two isolated stores and imports their real generated logs.
+Managers can add products manually or review food-catalog results. Search uses a shared eight-request budget per one-minute window and a five-second timeout. Preview tokens expire after 15 minutes. Other applications on the same IP may consume the provider's limits too.
+
+Imported data retains [Open Food Facts](https://world.openfoodfacts.org) product links, barcode, import time, and ODbL attribution. Check its [reuse conditions](https://support.openfoodfacts.org/help/en-gb/12-api-data-reuse/94-are-there-conditions-to-use-the-api) before distributing an imported database. This repository includes no downloaded food dataset or images. Always check packaging; missing allergen data does not establish absence.
+
+## Tests
+
+```sh
+python -m venv .venv
+# Activate the environment for your shell.
+python -m pip install -r web/requirements.txt
+cd web
+python manage.py check
+python manage.py makemigrations --check --dry-run
+python manage.py test tests -v 2
+```
+
+For PostgreSQL, install `requirements-postgres.txt` and set `GROCERY_DB_ENGINE=postgres`, `PGHOST`, `PGDATABASE`, `PGUSER`, and `PGPASSWORD`. CI creates a fresh PostgreSQL service and runs the concurrent last-item reservation test.
+
+Root CMake tests cover the C++ CLI and rule kernel. `tests/stack_check.py` uses Playwright against the Compose deployment to exercise checkout, store scope, shared sessions, centralized logs, mobile layout, and web-node failover. CI saves screenshots in the `web-previews` artifact.
+
+Verify the store ledger:
+
+```sh
+docker compose --env-file deployment/.env -f deployment/compose.yaml exec web-a python manage.py verify_ledger
+```
+
+The older C++ CLI remains independent: copy `data/store.sample.txt` to a runtime path, then run `grocery --store PATH --node local`. `tools/demo.py --binary PATH_TO_GROCERY` exercises two independent files and log collection. It is not a second client for PostgreSQL.

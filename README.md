@@ -1,34 +1,55 @@
 # Grocery Store Management
 
-A first-year C++ team project, revisited as a systems architecture learning exercise.
+A first-year C++ team project, revisited to explore how a small application changes when several customers and stores share the same data.
 
-The original application let customers browse groceries and manage a cart, with a separate manager menu for inventory. This version keeps that domain but reworks how the application manages state, saves changes, and reports failures.
+The original project used menus and CSV files. This version adds a browser storefront, store management, stock reservations, and payment adapters. The interesting part is what happens when a customer leaves a cart, a payment response arrives late, or two people try to buy the last item.
 
-**C++17 · Python · SQLite · CMake · GitHub Actions**
+**C++17 · Python / Django · PostgreSQL · Docker Compose · Stripe test mode**
 
-## Why revisit it?
+## Try it
 
-The first version worked around global inventory and separate CSV files. Menu code handled business rules and file writes together, which made bugs difficult to isolate. A cart change could also update inventory without successfully saving the cart.
+Install Docker with Linux containers and Compose v2, plus Python 3.12. From the repository root:
 
-The refactor applies systems architecture concepts to those specific problems:
+```sh
+python tools/deploy.py up
+python tools/deploy.py credentials
+```
 
-- **Separate responsibilities:** the command interface calls a service; storage and logging sit behind small interfaces.
-- **Consistent state changes:** inventory and cart reservations are saved together. Failed saves leave the previous state intact.
-- **Explicit ownership:** standard containers replace owning pointers, and product IDs replace name-based matching.
-- **Useful diagnostics:** structured logs can be collected from multiple app instances and searched in SQLite.
-- **Testable failures:** tests exercise failed writes, invalid data, restarts, and repeated log imports.
+Open **http://localhost:8080**. The first start creates two stores, an empty warehouse, and sample accounts. Credentials are generated locally in the ignored `deployment/.env` file.
 
-The [architecture notes](docs/architecture.md) explain the before-and-after decisions and their tradeoffs.
+- Shop as a guest or sign in as `customer`. Add items and place a simulated order.
+- Use `manager-east` or `manager-harbour` to manage that store or import a reviewed Open Food Facts product.
+- Use `admin` to receive warehouse stock, transfer it to a store, and inspect logs from both web servers and the payment worker.
 
-## My contribution
+The simulator supports approval, decline, and a delayed response. Optional [Stripe test checkout](docs/payments.md) needs your own test credentials. No real charges are supported.
 
-In the original team project, I implemented the cart and integrated it with the customer menu, stock updates, and CSV storage. The project was developed with Joseph Ho, Izaac-Rob, and rachelchowww.
+`python tools/deploy.py down` stops the sandbox while preserving its database volumes.
 
-This later refactor is a separate learning extension developed with AI assistance. The [original implementation](https://github.com/Daatari/grocery-store-management/tree/d0137342df344df64385ab0c7cd9e2b34b89b12f) and [team credits](CONTRIBUTORS.md) are preserved.
+## What changed
 
-## Build and test
+| Problem explored | Implementation |
+| --- | --- |
+| Shoppers competing for stock | Row-locked reservations, expiry, constraints, and concurrency tests |
+| Uncertain payment outcomes | Durable jobs, retry leases, provider idempotency, and protected reservations |
+| Multiple stores | Shared products with separate prices and inventory per store |
+| Guest and account purchases | Customer identity separate from login credentials; historical order snapshots |
+| Replenishment | Warehouse receipts and atomic, audited transfers |
+| External catalog data | Reviewed imports, barcode deduplication, bounded input, and source attribution |
+| Multiple web instances | Shared PostgreSQL sessions and state; centralized operational logs |
 
-Requires a C++17 compiler, CMake 3.20+, and Python 3.9+. Python tools use the standard library only.
+The main application is a **modular monolith**. Inventory and checkout share one transactional database. A separate simulated payment provider makes network failures observable; its C++ rule kernel has a small plugin interface.
+
+[Architecture](docs/architecture.md) · [Database schema](docs/schema.md) · [Operations and tests](docs/operations.md) · [Security](docs/security.md)
+
+## Project history
+
+In the original PRG210 team project, I implemented the shopping cart and connected it to the customer menu, stock updates, and CSV storage. The project was developed with Joseph Ho, Izaac-Rob, and rachelchowww.
+
+The later architecture work is an AI-assisted learning extension, separate from the course submission and my teammates' contributions. The [original implementation](https://github.com/Daatari/grocery-store-management/tree/d0137342df344df64385ab0c7cd9e2b34b89b12f) and [contributor record](CONTRIBUTORS.md) remain available.
+
+## C++ components
+
+The earlier standalone CLI remains alongside the web application. Its file storage is independent of the web database.
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
@@ -36,55 +57,8 @@ cmake --build build --config Debug
 ctest --test-dir build -C Debug --output-on-failure
 ```
 
-The executable is `build/grocery` on a typical Linux build, or `build/Debug/grocery.exe` with Visual Studio on Windows.
-
-## Try it
-
-On Linux, from the repository root:
-
-```sh
-mkdir -p runtime
-cp data/store.sample.txt runtime/store.txt
-./build/grocery --store runtime/store.txt --node local
-```
-
-On Windows PowerShell:
-
-```powershell
-New-Item -ItemType Directory -Force runtime
-Copy-Item data/store.sample.txt runtime/store.txt
-.\build\Debug\grocery.exe --store runtime/store.txt --node local
-```
-
-Then enter:
-
-```text
-list
-add 1 5
-remove 1 2
-cart
-checkout
-quit
-```
-
-The cart retains three apples after the partial removal. Checkout reports a $11.97 subtotal; stock is deducted only once. Changes are saved after each successful operation. Copying the sample file again resets the store, so only do that when you want to discard your local changes.
-
-## Collect and inspect logs
-
-The demo runs two independent stores, generates successful and rejected operations, and imports their logs into one SQLite index. A second import demonstrates duplicate handling.
-
-```sh
-python tools/demo.py --binary build/grocery
-```
-
-On Windows, pass `--binary build/Debug/grocery.exe`. The demo prints its output directory. Use the database path it prints to query events:
-
-```sh
-python tools/logs.py --db runtime/demo-TIMESTAMP/events.sqlite query --level WARN --operation cart.add
-```
-
-See [operations](docs/operations.md) for commands, log filters, and troubleshooting.
+CI also tests the web application with SQLite and PostgreSQL, concurrent reservations, and browser/failover checks against the Linux deployment.
 
 ## Scope
 
-This is a local, single-writer application with one cart per store. It demonstrates architecture and operational tooling, not a production checkout system. There is no payment processing, tax calculation, authentication, or distributed database. Log collection is a batch tool, and snapshot saves do not guarantee durability through power loss.
+This is a local learning application. Orders are pickup-only and exclude tax, refunds, delivery, and real payments. Containers demonstrate Linux processes and networks on one Docker host, not independent machines or a highly available deployment. Food metadata is community supplied and must be checked against packaging.

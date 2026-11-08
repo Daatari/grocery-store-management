@@ -17,7 +17,7 @@ The original local clone retains authentic commit authorship. This independent r
 
 ## Later architecture exercise
 
-The original first-year project is preserved in the repository's initial import, `d0137342df344df64385ab0c7cd9e2b34b89b12f`. The current service/repository design, structured logging, Python/SQLite collector, tests, and CI are a later learning extension developed with AI assistance at Danny Atari's direction. They are not attributed to the original teammates or represented as part of the course submission.
+The original first-year project is preserved in the repository's initial import, `d0137342df344df64385ab0c7cd9e2b34b89b12f`. The service/repository refactor, web application, payment and catalog adapters, C++ policy kernel, warehouse/reservation model, Linux deployment, logging, tests, and CI are a later learning extension developed with AI assistance at Danny Atari's direction. They are not attributed to the original teammates or represented as part of the course submission.
 
 The extension replaces the original application implementation. Historical contribution descriptions above refer to the coursework version, not authorship of the new code.
 
