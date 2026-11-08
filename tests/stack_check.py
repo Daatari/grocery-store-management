@@ -93,6 +93,13 @@ def main():
             raise AssertionError("Central logs did not contain both server instances")
         page.select_option("select[name=level]", "WARN")
         page.get_by_role("button", name="Filter events").click()
+        for attempt in range(12):
+            if page.get_by_text("http_403", exact=True).count():
+                break
+            time.sleep(2)
+            page.reload()
+        else:
+            raise AssertionError("Central collector did not index the rejected cross-store request")
         expect(page.get_by_text("http_403", exact=True).first).to_be_visible()
         page.screenshot(path=str(screenshots / "centralized-logs.png"), full_page=True)
         mobile = browser.new_page(viewport={"width": 390, "height": 844}, is_mobile=True, device_scale_factor=1)
@@ -114,4 +121,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
