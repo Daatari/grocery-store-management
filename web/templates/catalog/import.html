@@ -1,0 +1,13 @@
+{% extends 'base.html' %}{% block content %}
+<a href="{% url 'manage-store' store.slug %}">← {{ store.name }}</a><h1>Add a product</h1>
+<p>Search by a nearby product name, brand or category, then review a match. Results are text matches, not guaranteed substitutes.</p>
+<form method="get" class="panel">{{ search.as_p }}<button>Search Open Food Facts</button></form>
+<p class="muted">Community-supplied data can be incomplete or outdated. Check packaging, especially allergens. Missing information does not mean allergen-free.</p>
+{% for result in results %}<section class="panel"><h2>{{ result.data.name }}</h2>
+<p>{{ result.data.brand }} · {{ result.data.package_quantity }} · Barcode {{ result.data.barcode }}</p>
+<p>Ingredients: {{ result.data.ingredients|default:'Not supplied' }}</p><p>Allergen tags: {{ result.data.allergens|join:', '|default:'Not supplied' }}</p>
+<details><summary>Nutrition per 100 g / 100 ml, as supplied</summary>{{ result.data.nutrients }}</details>
+<p><a href="https://world.openfoodfacts.org/product/{{ result.data.barcode }}" rel="noreferrer">Open Food Facts source</a> · ODbL</p>
+<form method="post">{% csrf_token %}{{ result.form.as_p }}<p>Imported name and category use the reviewed source snapshot. Price and stock belong only to this store.</p><button>Import reviewed product</button></form></section>{% endfor %}
+<section class="panel"><h2>Add manually</h2><p>Use this when no suitable match exists or the service is unavailable.</p><form method="post">{% csrf_token %}{{ listing.as_p }}<button>Add product</button></form></section>
+{% endblock %}

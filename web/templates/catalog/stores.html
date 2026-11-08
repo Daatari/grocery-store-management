@@ -1,0 +1,5 @@
+{% extends 'base.html' %}{% block content %}
+<section class="hero"><div><p class="eyebrow">Good food. Close to home.</p><h1>Find your<br>neighbourhood store.</h1><p>Browse the shelves, build your basket, and keep every order in one place.</p></div><div class="hero-art" aria-hidden="true"><span class="leaf leaf-one"></span><span class="leaf leaf-two"></span><span class="fruit"></span><span class="fruit small-fruit"></span><span class="bag">N</span></div></section>
+<div class="section-title"><h2>Choose a store</h2><span class="muted">Each location has its own prices and availability</span></div>
+<div class="store-grid">{% for store in stores %}<article class="store-card"><div class="store-banner"><span>LOCAL MARKET</span><strong>{{ store.name|first }}</strong></div><div class="card-body"><h3>{{ store.name }}</h3><p class="muted">{{ store.address }}</p><a class="button" href="{% url 'store' store.slug %}">Browse groceries <span aria-hidden="true">↗</span></a></div></article>{% empty %}<p>No stores are available right now.</p>{% endfor %}</div>
+{% endblock %}
