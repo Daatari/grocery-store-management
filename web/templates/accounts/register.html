@@ -1,0 +1,3 @@
+{% extends 'base.html' %}{% block title %}Create account · Neighbourhood Market{% endblock %}
+{% block content %}<section class="auth"><p class="eyebrow">Make yourself at home</p><h1>Create an account</h1><p class="muted">Shop across stores with a separate cart at each location.</p>
+<form method="post">{% csrf_token %}{{ form.as_p }}<button>Create account</button></form></section>{% endblock %}

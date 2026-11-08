@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<section class="auth"><a class="back" href="{% url 'manage-store' store.slug %}">← {{ store.name }}</a><p class="eyebrow">Update inventory</p><h1>{{ item.product.name }}</h1><form method="post">{% csrf_token %}{{ form.as_p }}<button>Save changes</button></form></section>{% endblock %}

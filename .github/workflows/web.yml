@@ -1,0 +1,76 @@
+name: Web application and Linux sandbox
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sqlite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r web/requirements.txt
+      - name: Validate schema and run application tests
+        working-directory: web
+        run: |
+          python manage.py check
+          python manage.py makemigrations --check --dry-run
+          python manage.py test tests -v 2
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: grocery
+          POSTGRES_USER: grocery
+          POSTGRES_PASSWORD: ci-test-only-password
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U grocery -d grocery" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      GROCERY_DB_ENGINE: postgres
+      PGDATABASE: grocery
+      PGUSER: grocery
+      PGPASSWORD: ci-test-only-password
+      PGHOST: 127.0.0.1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r web/requirements-postgres.txt
+      - name: Run PostgreSQL and concurrent checkout tests
+        working-directory: web
+        run: python manage.py test tests -v 2
+  linux-stack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install browser test tools
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Deploy isolated Linux stack
+        run: python tools/deploy.py up
+      - name: Test browsers, shared sessions, centralized logs, and failover
+        run: python tests/stack_check.py
+      - name: Save browser previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-previews
+          path: screenshots/*.png
+          if-no-files-found: ignore
+      - name: Diagnostics on failure
+        if: failure()
+        run: python tools/deploy.py logs
+      - name: Stop sandbox
+        if: always()
+        run: python tools/deploy.py down

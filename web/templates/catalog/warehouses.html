@@ -1,0 +1,5 @@
+{% extends 'base.html' %}{% block content %}<h1>Warehouse inventory</h1>
+<p>Receive stock or record a completed transfer to a store. This demo treats a transfer as one atomic movement; it does not model goods in transit.</p>
+<section class="panel"><form method="post">{% csrf_token %}{{ form.as_p }}<button>Record movement</button></form></section>
+<h2>On hand</h2>{% for row in stock %}<p>{{ row.warehouse.name }} · {{ row.product.name }} · {{ row.quantity }}</p>{% endfor %}
+<h2>Recent movements</h2>{% for row in movements %}<p>{{ row.created_at }} · {{ row.stock.product.name }} · {{ row.delta }} · {% if row.destination %}To {{ row.destination.store.name }}{% else %}Received{% endif %}</p>{% endfor %}{% endblock %}

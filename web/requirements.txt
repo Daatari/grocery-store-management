@@ -1,0 +1,4 @@
+stripe>=12,<16
+Django>=5.2,<5.3
+waitress>=3.0,<4
+whitenoise>=6.8,<7

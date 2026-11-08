@@ -1,0 +1,18 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}Neighbourhood Market{% endblock %}</title>
+<link rel="stylesheet" href="{% static 'app.css' %}"></head>
+<body>
+<header><a class="brand" href="{% url 'stores' %}"><span class="mark">N</span> Neighbourhood Market</a>
+<nav aria-label="Main navigation"><a href="{% url 'stores' %}">Stores</a>
+{% if user.is_authenticated %}<a href="{% url 'orders' %}">My orders</a><a href="{% url 'management' %}">Management</a>
+{% if user.is_superuser %}<a href="{% url 'warehouses' %}">Warehouse</a><a href="{% url 'event-logs' %}">System logs</a>{% endif %}<span class="account">{{ user.username }}</span><form class="inline" method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="text-button">Sign out</button></form>
+{% else %}<a href="{% url 'orders' %}">Guest orders</a><a href="{% url 'login' %}">Sign in</a><a class="button small" href="{% url 'register' %}">Create account</a>{% endif %}</nav></header>
+<main>
+{% for message in messages %}<div role="status" class="notice {{ message.tags }}">{{ message }}</div>{% endfor %}
+{% block content %}{% endblock %}
+</main>
+<footer><span>Neighbourhood Market</span><span>Portfolio demo · Test mode only · No real charges</span></footer>
+</body></html>
