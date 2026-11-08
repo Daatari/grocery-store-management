@@ -27,8 +27,9 @@ def main():
         page.on("pageerror", lambda error: errors.append(str(error)))
         def sign_in(username, password):
             page.goto(BASE + "/accounts/login/")
-            page.get_by_label("Username", exact=True).fill(username)
-            page.get_by_label("Password", exact=True).fill(password)
+            page.screenshot(path=str(screenshots / "sign-in.png"), full_page=True)
+            page.get_by_label("Username").fill(username)
+            page.get_by_label("Password").fill(password)
             page.get_by_role("button", name="Sign in", exact=True).click()
             expect(page.get_by_role("button", name="Sign out")).to_be_visible()
         sign_in("customer", values["GROCERY_DEMO_PASSWORD"])
@@ -73,13 +74,13 @@ def main():
         page.get_by_role("button", name="Sign out").click()
         sign_in("admin", values["GROCERY_ADMIN_PASSWORD"])
         page.goto(BASE + "/warehouses/")
-        page.get_by_label("Stock", exact=True).select_option(label="Central warehouse: Apples")
-        page.get_by_label("Quantity", exact=True).fill("10")
+        page.get_by_label("Stock").select_option(label="Central warehouse: Apples")
+        page.get_by_label("Quantity").fill("10")
         page.get_by_role("button", name="Record movement").click()
         expect(page.get_by_text("Central warehouse · Apples · 10", exact=True)).to_be_visible()
-        page.get_by_label("Stock", exact=True).select_option(label="Central warehouse: Apples")
-        page.get_by_label("Destination", exact=True).select_option(label="East Market: Apples")
-        page.get_by_label("Quantity", exact=True).fill("3")
+        page.get_by_label("Stock").select_option(label="Central warehouse: Apples")
+        page.get_by_label("Destination").select_option(label="East Market: Apples")
+        page.get_by_label("Quantity").fill("3")
         page.get_by_role("button", name="Record movement").click()
         expect(page.get_by_text("Central warehouse · Apples · 7", exact=True)).to_be_visible()
         page.screenshot(path=str(screenshots / "warehouse.png"), full_page=True)
@@ -113,3 +114,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
