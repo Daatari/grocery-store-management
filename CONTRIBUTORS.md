@@ -15,5 +15,9 @@ Source snapshot: `a1d24d5bcb34bf4753b0ff7f7a651d24ccd236f7` from `Joelute/PRG210
 
 The original local clone retains authentic commit authorship. This independent repository begins with a fresh import; it excludes the historical commits, which contain contributor email addresses. It does not recreate or reassign historical authorship. The initial import credits the team and retains this contributor record. Historical commits have not been imported.
 
-Portfolio documentation and packaging were prepared with AI assistance after the original project snapshot. The C++ files are unchanged from that snapshot. This package is for portfolio preparation and is not represented as a new course submission.
+## Later architecture exercise
+
+The original first-year project is preserved in the repository's initial import, `d0137342df344df64385ab0c7cd9e2b34b89b12f`. The current service/repository design, structured logging, Python/SQLite collector, tests, and CI are a later learning extension developed with AI assistance at Danny Atari's direction. They are not attributed to the original teammates or represented as part of the course submission.
+
+The extension replaces the original application implementation. Historical contribution descriptions above refer to the coursework version, not authorship of the new code.
 

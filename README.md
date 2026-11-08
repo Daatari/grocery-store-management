@@ -1,70 +1,90 @@
-# Grocery Store Management System
+# Grocery Store Management
 
-A C++ console application with separate customer and manager menus. Customers can browse products and manage a shopping cart; managers can add departments and products, update inventory, and save changes to CSV.
+A first-year C++ team project, revisited as a systems architecture learning exercise.
 
-Built as a team project for PRG210 using **C++17, object-oriented programming, dynamic memory allocation, and file I/O**.
+The original application let customers browse groceries and manage a cart, with a separate manager menu for inventory. This version keeps that domain but reworks how the application manages state, saves changes, and reports failures.
+
+**C++17 · Python · SQLite · CMake · GitHub Actions**
+
+## Why revisit it?
+
+The first version worked around global inventory and separate CSV files. Menu code handled business rules and file writes together, which made bugs difficult to isolate. A cart change could also update inventory without successfully saving the cart.
+
+The refactor applies systems architecture concepts to those specific problems:
+
+- **Separate responsibilities:** the command interface calls a service; storage and logging sit behind small interfaces.
+- **Consistent state changes:** inventory and cart reservations are saved together. Failed saves leave the previous state intact.
+- **Explicit ownership:** standard containers replace owning pointers, and product IDs replace name-based matching.
+- **Useful diagnostics:** structured logs can be collected from multiple app instances and searched in SQLite.
+- **Testable failures:** tests exercise failed writes, invalid data, restarts, and repeated log imports.
+
+The [architecture notes](docs/architecture.md) explain the before-and-after decisions and their tradeoffs.
 
 ## My contribution
 
-I implemented the shopping cart and connected it to the customer menu, inventory updates, and CSV storage. My work included:
+In the original team project, I implemented the cart and integrated it with the customer menu, stock updates, and CSV storage. The project was developed with Joseph Ho, Izaac-Rob, and rachelchowww.
 
-- Adding products to the cart and tracking quantities.
-- Displaying cart contents and saving them to a file.
-- Integrating cart actions with stock adjustments.
-- Adding cart-loading support and wiring it into the application.
+This later refactor is a separate learning extension developed with AI assistance. The [original implementation](https://github.com/Daatari/grocery-store-management/tree/d0137342df344df64385ab0c7cd9e2b34b89b12f) and [team credits](CONTRIBUTORS.md) are preserved.
 
-The project was developed with Joseph Ho, Izaac-Rob, and rachelchowww. See [Contributors](CONTRIBUTORS.md) for attribution and the original project history reference.
+## Build and test
 
-## How it works
-
-`Product` stores an item's name, price, and stock quantity. `Department` groups products, while `Cart` holds the customer's selections. Customer and manager menus share a common `Menu` base class. Inventory and cart data are stored in local CSV files.
-
-The sample inventory includes Produce, Dairy, and Bakery departments. Adding a product to the cart reduces its available stock and saves the updated inventory.
-
-## Run locally
-
-Run commands from the repository root. Copy the sample files again whenever you want to reset the demo.
-
-### Linux / WSL
-
-Requires a C++17 compiler and GNU Make. The Makefile uses Clang by default; use `make CXX=g++` for GCC.
+Requires a C++17 compiler, CMake 3.20+, and Python 3.9+. Python tools use the standard library only.
 
 ```sh
-cp data/grocery.sample.csv grocery.csv
-cp data/cart.sample.csv cart.csv
-make
-./build/main
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build --config Debug
+ctest --test-dir build -C Debug --output-on-failure
 ```
 
-After changing header files, run `make clean` before rebuilding.
+The executable is `build/grocery` on a typical Linux build, or `build/Debug/grocery.exe` with Visual Studio on Windows.
 
-### Windows / Visual Studio
+## Try it
 
-Open **x64 Native Tools Command Prompt for VS** in the repository folder:
+On Linux, from the repository root:
 
-```bat
-if not exist build mkdir build
-copy data\grocery.sample.csv grocery.csv
-copy data\cart.sample.csv cart.csv
-cl /nologo /std:c++17 /EHsc /W4 /D_CRT_SECURE_NO_WARNINGS src\*.cpp /Fo:build\ /Fe:build\main.exe
-build\main.exe
+```sh
+mkdir -p runtime
+cp data/store.sample.txt runtime/store.txt
+./build/grocery --store runtime/store.txt --node local
 ```
 
-### Quick demo
+On Windows PowerShell:
 
-1. Select **Customer**, then **Browse Departments**, and choose **Produce**.
-2. Select **Add Item to Cart**, choose **Apples**, and enter a quantity of **2**.
-3. Select **View Cart** to see the items, then exit.
+```powershell
+New-Item -ItemType Directory -Force runtime
+Copy-Item data/store.sample.txt runtime/store.txt
+.\build\Debug\grocery.exe --store runtime/store.txt --node local
+```
 
-The Windows build and this demo have been tested with MSVC 14.51. Linux build instructions have not been tested.
+Then enter:
 
-## Current limitations
+```text
+list
+add 1 5
+remove 1 2
+cart
+checkout
+quit
+```
 
-This version preserves the original coursework implementation. Checkout and tax calculation are not implemented. Known issues include partial cart removal and restoring a saved cart into the active customer session. Input validation, CSV error handling, capacity checks, and memory cleanup also need improvement.
+The cart retains three apples after the partial removal. Checkout reports a $11.97 subtotal; stock is deducted only once. Changes are saved after each successful operation. Copying the sample file again resets the store, so only do that when you want to discard your local changes.
 
-## Source layout
+## Collect and inspect logs
 
-- `src/` — application implementation
-- `include/` — class declarations
-- `data/` — sample inventory and empty cart
-- `.devcontainer/` — C++ development environment
+The demo runs two independent stores, generates successful and rejected operations, and imports their logs into one SQLite index. A second import demonstrates duplicate handling.
+
+```sh
+python tools/demo.py --binary build/grocery
+```
+
+On Windows, pass `--binary build/Debug/grocery.exe`. The demo prints its output directory. Use the database path it prints to query events:
+
+```sh
+python tools/logs.py --db runtime/demo-TIMESTAMP/events.sqlite query --level WARN --operation cart.add
+```
+
+See [operations](docs/operations.md) for commands, log filters, and troubleshooting.
+
+## Scope
+
+This is a local, single-writer application with one cart per store. It demonstrates architecture and operational tooling, not a production checkout system. There is no payment processing, tax calculation, authentication, or distributed database. Log collection is a batch tool, and snapshot saves do not guarantee durability through power loss.

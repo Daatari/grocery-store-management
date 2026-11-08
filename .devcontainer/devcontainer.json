@@ -20,5 +20,5 @@
       }
     }
   },
-  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y clangd"
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y clangd cmake python3"
 }

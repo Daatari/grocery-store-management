@@ -1,0 +1,6 @@
+GROCERY 1
+P 1 "Produce" "Apples" 399 16
+P 2 "Produce" "Bananas" 149 30
+P 3 "Dairy" "Milk" 499 12
+P 4 "Bakery" "Bread" 249 15
+END
