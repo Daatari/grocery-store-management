@@ -1,0 +1,12 @@
+build/
+.cache/
+grocery.csv
+cart.csv
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+.DS_Store
+Thumbs.db

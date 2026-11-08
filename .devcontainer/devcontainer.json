@@ -1,0 +1,24 @@
+{
+  "name": "C++ Dev Environment",
+  "image": "mcr.microsoft.com/devcontainers/cpp:1-ubuntu",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "llvm-vs-code-extensions.vscode-clangd",
+        "ms-vscode.cpptools"
+      ],
+      "settings": {
+        "C_Cpp.intelliSenseEngine": "disabled",
+        "C_Cpp.formatting": "disabled",
+        "editor.formatOnSave": true,
+        "[cpp]": {
+          "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+        },
+        "[c]": {
+          "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+        }
+      }
+    }
+  },
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y clangd"
+}
